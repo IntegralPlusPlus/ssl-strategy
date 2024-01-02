@@ -21,6 +21,8 @@ import bridge.processors.auxiliary as auxiliary
 class MatlabController(BaseProcessor):
     xR = 4500
     yR = 0
+    RR = 500
+    deltaR = 0.05 * RR
 
     processing_pause: typing.Optional[float] = 0.001
     max_commands_to_persist: int = 20
@@ -62,18 +64,25 @@ class MatlabController(BaseProcessor):
         else: return -1
 
     def between(self, x, y, xFrom, yFrom, xTo, yTo):
-        return ((xFrom - 200 < x and x < xTo + 200) or (xTo - 200 < x and x < xFrom + 200)) \
-                and ((yFrom - 200 < y and y < yTo + 200) or (yTo - 200 < y and y < yFrom + 200))
+        return ((xFrom - self.RR < x and x < xTo + self.RR) or (xTo - self.RR < x and x < xFrom + self.RR)) \
+                and ((yFrom - self.RR < y and y < yTo + self.RR) or (yTo - self.RR < y and y < yFrom + self.RR))
     
     def intersection(self, x, y, xFrom, yFrom, xTo, yTo):
         if self.between(x, y, xFrom, yFrom, xTo, yTo):
-            a = 1 / (xTo - xFrom)
-            b = -1 / (yTo - yFrom)
-            c = yFrom / (yTo - yFrom) - xFrom / (xTo - xFrom)
+            if xTo != xFrom: a = 1 / (xTo - xFrom)
+            else: a = 0
+            
+            if yTo != yFrom: b = -1 / (yTo - yFrom)
+            else: b = 0
+            
+            c = -yFrom * b - xFrom * a
             distPointLine = abs(a * x + b * y + c) / math.sqrt(a**2 + b**2) 
             
-            return distPointLine < 220
+            return distPointLine < self.RR - self.deltaR
         else: return False
+    
+    def sameCoords(self, x1, y1, x2, y2):
+        return abs(x1 - x2) < 150 and abs(y1 - y2) < 150    
 
     async def process(self) -> None:
         print("GO")
@@ -113,7 +122,7 @@ class MatlabController(BaseProcessor):
             # Strategy code start
             if self.state == 0: self.b_team.robot(0).rotate_to_point(auxiliary.Point(self.ball.x, self.ball.y))
             elif self.state == 1: self.b_team.robot(0).rotate_to_point(auxiliary.Point(self.xR, self.yR))
-            R = 200
+            R = self.RR
             r = 110
             x1 = self.b_team.robot(0).x
             y1 = self.b_team.robot(0).y
@@ -314,7 +323,7 @@ class MatlabController(BaseProcessor):
             while len(points) != 0:
                 wasIntersection = False
                 inx = robotPointsIndx[0]
-                
+                            
                 if inx != -1: this_robot = [xRobots[inx], yRobots[inx]]
                 else: this_robot = [x1, y1]
 
@@ -329,73 +338,78 @@ class MatlabController(BaseProcessor):
                     if this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]: current = i
 
                 for i in range(len(xRobots)):
+                    #not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and 
+                    if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and self.intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
+                    
                     if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and not(used[i]) and self.intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast):
-                        #print("INTERSECTION")
                         used[i] = True
                         wasIntersection = True
                         dist = math.sqrt((xNow - xRobots[i])**2 + (yNow - yRobots[i])**2)
                         if R / dist < 1 and R / dist > -1: alpha = math.asin(R / dist)
                         elif R / dist < 0: alpha = math.asin(-1)
                         else: alpha = math.asin(1)
-
-                        #if dist**2 - R**2 >= 0: kas = math.sqrt(dist**2 - R**2)
-                        #else: kas = 0
-                        kas = dist * math.cos(alpha)
                         
+                        kas = dist * math.cos(alpha)
+                                                    
                         gamma = math.asin(abs(yRobots[i] - yNow) / dist)
                         point1 = [xNow + self.sign(xRobots[i] - xNow) * kas * math.cos(gamma + alpha), yNow + self.sign(yRobots[i] - yNow) * kas * math.sin(gamma + alpha)]
                         point2 = [xNow + self.sign(xRobots[i] - xNow) * kas * math.cos(gamma - alpha), yNow + self.sign(yRobots[i] - yNow) * kas * math.sin(gamma - alpha)]
-
+                        
+                        #print("FROM: ", end = "")
+                        #printPoint(this_point)
+                        #printPoint(point1)
+                        #printPoint(point2)
+                        
                         way[i] = [xNow, yNow]
-                        if current != -1: 
-                            dists_[i] = dists_[current] + 1
-                        else:
-                            dists_[i] = 1
-
-                        xTo = point1[0]
-                        yTo = point1[1]
-                        #robotPointsIndx.append(i)
-                        #robotPointsIndx.append(i)
-                        #points.append(point1)
-                        #points.append(point2)
-                        break
-                #print("DIST_CURRENT: ", dists_[current])
-                '''if not wasIntersection and current != -1:
-                    print("PATH")
-                    usedNew = [False for i in range(len(xRobots))]
-                    minDists = 10000
+                        if current != -1:  dists_[i] = dists_[current] + 1
+                        else: dists_[i] = 1
+                        
+                        robotPointsIndx.append(i)
+                        robotPointsIndx.append(i)
+                        points.append(point1)
+                        points.append(point2)
+                    
+                if not wasIntersection and current != -1:
+                    #print("PATH, from: ", end = "")
+                    #printPoint(this_point)
+                    #minDists = 10000
+                    #print("DISTS_", dists_[current])
                     if minDists > dists_[current] and dists_[current] != 0: 
                         minDists = dists_[current]
+                        usedNew = [False for i in range(len(xRobots))]
                         path.clear()
                         path.append([xLast, yLast])
-                        path.append([this_robot[0], this_robot[1]])
+                        path.append([this_point[0], this_point[1]])
                         iCurrent = current
-
+                
                         while True:
-                            print(iCurrent)
+                            #print(iCurrent)
                             p = way[iCurrent]
                             path.append(p)
-                            startPoint = True
-                            for i in range(len(xRobots)):
-                                if not usedNew[i] and math.sqrt((p[0] - xRobots[i])**2 + (p[1] - yRobots[i])**2) < R + 10: 
-                                    usedNew[i] = True
-                                    iCurrent = i
-                                    startPoint = False
-                                    break
-                            if startPoint: 
-                                path.append([x1, y1])
-                                break
-                    counter += 1'''
+                            if not(p[0] == x1 and p[1] == y1): 
+                                #startPoint = True
+                                for i in range(len(xRobots)):
+                                    if not(usedNew[i]) and math.sqrt((p[0] - xRobots[i])**2 + (p[1] - yRobots[i])**2) < R + self.deltaR: 
+                                        usedNew[i] = True
+                                        iCurrent = i
+                                        break
+                            else: break
+                            
+                        counter += 1
                 
-                #if counter >= 5:
-                #    break
+                if counter >= 5:
+                    break
             
-            #if len(path) <= 2:
-            #    xTo = 0
-            #    yTo = 0
-            #else: 
-            #    xTo = path[len(path) - 3][0]
-            #    yTo = path[len(path) - 3][1]
+            if len(path) <= 2:
+                xTo = xLast
+                yTo = yLast
+            else:
+                for i in range(len(path) - 2, -1, -1): 
+                    xy = path[i]
+                    if not self.sameCoords(xy[0], xy[1], x1, y1):
+                        xTo = xy[0]
+                        yTo = xy[1]
+                        break
 
             print(xTo, yTo)
             self.b_team.robot(0).go_to_point(auxiliary.Point(xTo, yTo))
