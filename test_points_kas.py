@@ -1,23 +1,15 @@
-'''
-
-                            Online Python Compiler.
-                Code, Compile, Run and Debug python program online.
-Write your code in this editor and press "Run" button to execute it.
-
-'''
-
 import math
 
 R = 3
-deltaR = 0.1 * R
+deltaR = 0.3 * R
 x1 = 0
 y1 = 0
 xNow = 0
 yNow = 0
 xRobots = [-4, -10]
 yRobots = [-2, -5]
-xLast = -10
-yLast = -10
+xLast = -15
+yLast = -4
 
 def sign(a):
     if a >= 0: return 1
@@ -83,7 +75,7 @@ while len(points) != 0:
 
     for i in range(len(xRobots)):
         #not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and 
-        if intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
+        if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
         
         if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and not(used[i]) and intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast):
             used[i] = True
@@ -99,6 +91,8 @@ while len(points) != 0:
             point1 = [xNow + sign(xRobots[i] - xNow) * kas * math.cos(gamma + alpha), yNow + sign(yRobots[i] - yNow) * kas * math.sin(gamma + alpha)]
             point2 = [xNow + sign(xRobots[i] - xNow) * kas * math.cos(gamma - alpha), yNow + sign(yRobots[i] - yNow) * kas * math.sin(gamma - alpha)]
             
+            print("FROM: ", end = "")
+            printPoint(this_point)
             printPoint(point1)
             printPoint(point2)
             
@@ -135,6 +129,7 @@ while len(points) != 0:
                             usedNew[i] = True
                             iCurrent = i
                             break
+                else: break
                 
             counter += 1
             
