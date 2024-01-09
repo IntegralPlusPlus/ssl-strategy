@@ -1,13 +1,13 @@
 import math
 
 R = 3
-deltaR = 0.3 * R
+deltaR = 0.07 * R
 x1 = 0
 y1 = 0
 xNow = 0
 yNow = 0
-xRobots = [-4, -10]
-yRobots = [-2, -5]
+xRobots = [-5, -12]
+yRobots = [-3, -1]
 xLast = -15
 yLast = -4
 
@@ -32,6 +32,11 @@ def intersection(x, y, xFrom, yFrom, xTo, yTo):
         
         return distPointLine < R - deltaR
     else: return False
+    
+def printLine(point1, point2):
+    k = (point1[1] - point2[1]) / (point1[0] - point2[0])
+    b =  point1[1] - point1[0] * k
+    print("y = ", k, " * x + ", b, sep = '')
 
 def printPoint(point):
     print("(", point[0], ", ", point[1], ")", sep = '')
@@ -63,7 +68,9 @@ while len(points) != 0:
     if inx != -1: this_robot = [xRobots[inx], yRobots[inx]]
     else: this_robot = [x1, y1]
 
+    print("this_point: ")
     this_point = points[0]
+    printPoint(this_point)
     xNow = this_point[0]
     yNow = this_point[1]
 
@@ -75,7 +82,8 @@ while len(points) != 0:
 
     for i in range(len(xRobots)):
         #not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and 
-        if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
+        #if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
+        if intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast): wasIntersection = True
         
         if not(this_robot[0] == xRobots[i] and this_robot[1] == yRobots[i]) and not(used[i]) and intersection(xRobots[i], yRobots[i], xNow, yNow, xLast, yLast):
             used[i] = True
@@ -92,7 +100,7 @@ while len(points) != 0:
             point2 = [xNow + sign(xRobots[i] - xNow) * kas * math.cos(gamma - alpha), yNow + sign(yRobots[i] - yNow) * kas * math.sin(gamma - alpha)]
             
             print("FROM: ", end = "")
-            printPoint(this_point)
+            printPoint([xNow, yNow])
             printPoint(point1)
             printPoint(point2)
             
@@ -102,8 +110,11 @@ while len(points) != 0:
             
             robotPointsIndx.append(i)
             robotPointsIndx.append(i)
+            print("Append")
             points.append(point1)
+            print("Append")
             points.append(point2)
+            #break
         
     if not wasIntersection and current != -1:
         print("PATH, from: ", end = "")
@@ -133,5 +144,6 @@ while len(points) != 0:
                 
             counter += 1
             
-for i in range(len(path)):
-    printPoint(path[i])
+for i in range(1, len(path)):
+    printLine(path[i], path[i - 1])
+    #printPoint(path[i])
